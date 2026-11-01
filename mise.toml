@@ -47,3 +47,10 @@ run = 'mkdir -p "${LM_MODS_DIR:?set LM_MODS_DIR in mise.local.toml}/amml/@alaydr
 description = "Criterion benches for the per-frame hot paths; arguments narrow the run"
 dir = "{{config_root}}"
 run = "cargo bench -p zoom-bench --bench zoom --"
+
+[tasks.package]
+description = "Builds the mod into dist/@alaydriem/zoom; that folder is the release artifact"
+depends = ["build-mod"]
+dir = "{{config_root}}"
+shell = "bash -c"
+run = 'ls -l dist/@alaydriem/zoom'

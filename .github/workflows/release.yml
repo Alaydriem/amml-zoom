@@ -1,4 +1,5 @@
 name: Release
+run-name: Release ${{ inputs.version }}
 
 on:
   workflow_dispatch:
@@ -31,5 +32,5 @@ jobs:
       path: zoom
       namespace: alaydriem
       name: zoom
-      package_task: build-mod
+      package_task: package
       descriptor: zoom/amml/descriptor.hcl
