@@ -28,7 +28,7 @@ Copy the `alaydriem-zoom` folder (`alaydriem_zoom.dll` and `amml.hcl`) into `mod
 
 | Zoom | Minecraft Bedrock | AMML | Mod Manager |
 | --- | --- | --- | --- |
-| 0.1.0 | 1.26.51, 1.26.60 | 0.1.x | 0.1.x |
+| 26.60.0 | 1.26.51, 1.26.60 | 26.60.x | 0.1.x |
 
 ## Configuration
 
