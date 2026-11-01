@@ -1,0 +1,49 @@
+[tasks.preflight]
+description = "Names a missing Rust toolchain or cargo-nextest before a build turns it into an obscure error"
+dir = "{{config_root}}"
+run = [
+  "rustc --version",
+  "cargo --version",
+  "cargo nextest --version",
+]
+
+[tasks.check]
+description = "cargo check, clippy with warnings denied, and rustfmt check over the workspace"
+dir = "{{config_root}}"
+run = [
+  "cargo check --workspace --all-targets",
+  "cargo clippy --workspace --all-targets -- -D warnings",
+  "cargo fmt --all --check",
+]
+
+[tasks.test]
+description = "Every workspace test through cargo-nextest"
+dir = "{{config_root}}"
+run = "cargo nextest run --workspace"
+
+[tasks.build-mod]
+description = "Builds the AMML mod into dist/@alaydriem/zoom (alaydriem_zoom.dll and amml.hcl)"
+dir = "{{config_root}}"
+shell = "bash -c"
+run = '''
+set -e
+cargo build --release -p zoom-amml
+rm -rf dist/alaydriem-zoom dist/@alaydriem/zoom
+mkdir -p dist/@alaydriem/zoom
+cp target/release/alaydriem_zoom.dll dist/@alaydriem/zoom/alaydriem_zoom.dll
+cp zoom/amml/amml.hcl dist/@alaydriem/zoom/amml.hcl
+echo "built dist/@alaydriem/zoom"
+'''
+
+[tasks.install-mod]
+description = "Copies the built mod into the AMML mods folder of the game: LM_MODS_DIR/amml/@alaydriem/zoom (set LM_MODS_DIR in mise.local.toml)"
+depends = ["build-mod"]
+dir = "{{config_root}}"
+shell = "bash -c"
+# AMML finds a mod by the folder under mods/amml that holds its amml.hcl
+run = 'mkdir -p "${LM_MODS_DIR:?set LM_MODS_DIR in mise.local.toml}/amml/@alaydriem/zoom" && cp -r dist/@alaydriem/zoom/. "$LM_MODS_DIR/amml/@alaydriem/zoom/"'
+
+[tasks.bench]
+description = "Criterion benches for the per-frame hot paths; arguments narrow the run"
+dir = "{{config_root}}"
+run = "cargo bench -p zoom-bench --bench zoom --"

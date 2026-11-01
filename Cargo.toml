@@ -1,0 +1,24 @@
+[workspace]
+resolver = "3"
+members = ["zoom/core", "zoom/amml", "zoom/bench"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.98"
+authors = ["Charles R. Portwood II"]
+license = "BSD-3-Clause"
+publish = false
+
+[workspace.dependencies]
+amm-client = { git = "https://github.com/Alaydriem/amml-modmanager.git", tag = "26.60.0", default-features = false }
+amm-core = { git = "https://github.com/Alaydriem/amml-modmanager.git", tag = "26.60.0" }
+amml-sdk = { git = "https://github.com/Alaydriem/amml.git", tag = "26.60.0" }
+curia = "=0.2.2"
+hcl-rs = "=0.19.8"
+serde = { version = "1.0.229", features = ["derive"] }
+zoom-core = { path = "zoom/core" }
+
+[workspace.lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"

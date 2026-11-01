@@ -1,0 +1,31 @@
+[package]
+name = "zoom-amml"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+autotests = false
+
+[lib]
+name = "alaydriem_zoom"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+zoom-core.workspace = true
+amml-sdk.workspace = true
+amm-client.workspace = true
+amm-core.workspace = true
+curia.workspace = true
+
+[dev-dependencies]
+amm-client = { workspace = true, features = ["test-support"] }
+hcl-rs.workspace = true
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[lints]
+workspace = true
