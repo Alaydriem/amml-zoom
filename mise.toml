@@ -32,6 +32,7 @@ rm -rf dist/alaydriem-zoom dist/@alaydriem/zoom
 mkdir -p dist/@alaydriem/zoom
 cp target/release/alaydriem_zoom.dll dist/@alaydriem/zoom/alaydriem_zoom.dll
 cp zoom/amml/amml.hcl dist/@alaydriem/zoom/amml.hcl
+cp zoom/amml/icon.png dist/@alaydriem/zoom/icon.png
 echo "built dist/@alaydriem/zoom"
 '''
 

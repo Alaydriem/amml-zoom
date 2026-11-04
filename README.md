@@ -4,9 +4,9 @@
 
 # Alaydriem's Zoom
 
-[![Release](https://img.shields.io/github/v/release/alaydriem/zoom?include_prereleases)](https://github.com/alaydriem/zoom/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/alaydriem/zoom/build.yml?branch=master&label=build)](https://github.com/alaydriem/zoom/actions/workflows/build.yml)
-[![License](https://img.shields.io/github/license/alaydriem/zoom)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/alaydriem/amml-zoom?include_prereleases)](https://github.com/alaydriem/amml-zoom/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/alaydriem/amml-zoom/build.yml?branch=master&label=build)](https://github.com/alaydriem/amml-zoom/actions/workflows/build.yml)
+[![License](https://img.shields.io/github/license/alaydriem/amml-zoom)](./LICENSE)
 ![Minecraft Bedrock](https://img.shields.io/badge/Minecraft_Bedrock-1.26.51%2C%201.26.60-62B47A)
 [![AMML](https://img.shields.io/badge/AMML-mod-4A90D9)](https://github.com/alaydriem/amml)
 
@@ -22,13 +22,7 @@ Hold <kbd>~</kbd> to zoom. The key can be changed on the mod manager's Keybinds 
 
 ## Installation
 
-Requires the AMML loader (as a LeviLamina mod, or standalone in a patched game folder) and [Alaydriem's Mod Manager](https://github.com/alaydriem/modmanager). Without the mod manager the zoom stays off.
-
-Copy the `dist/@alaydriem/zoom/` folder (`alaydriem_zoom.dll` and `amml.hcl`) into `mods/amml/@alaydriem/zoom/` of the game folder.
-
-| Zoom | Minecraft Bedrock | AMML | Mod Manager |
-| --- | --- | --- | --- |
-| 26.60.0 | 1.26.51, 1.26.60 | 26.60.x | 0.1.x |
+Install it with the [AMML launcher](https://github.com/alaydriem/amml/releases/latest). The launcher also installs the AMML loader and Alaydriem's Mod Manager, which this mod needs.
 
 ## Configuration
 
