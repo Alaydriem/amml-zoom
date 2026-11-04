@@ -1,5 +1,5 @@
 [tasks.preflight]
-description = "Names a missing Rust toolchain or cargo-nextest before a build turns it into an obscure error"
+description = "Names a missing toolchain or tool before a build turns it into an obscure error"
 dir = "{{config_root}}"
 run = [
   "rustc --version",
@@ -8,7 +8,7 @@ run = [
 ]
 
 [tasks.check]
-description = "cargo check, clippy with warnings denied, and rustfmt check over the workspace"
+description = "Compiles, runs clippy with warnings denied and checks formatting"
 dir = "{{config_root}}"
 run = [
   "cargo check --workspace --all-targets",
@@ -17,12 +17,12 @@ run = [
 ]
 
 [tasks.test]
-description = "Every workspace test through cargo-nextest"
+description = "Every test through cargo nextest run"
 dir = "{{config_root}}"
 run = "cargo nextest run --workspace"
 
-[tasks.build-mod]
-description = "Builds the AMML mod into dist/@alaydriem/zoom (alaydriem_zoom.dll and amml.hcl)"
+[tasks.package]
+description = "Builds dist/@alaydriem/zoom/ (alaydriem_zoom.dll, amml.hcl), the release artifact"
 dir = "{{config_root}}"
 shell = "bash -c"
 run = '''
@@ -35,22 +35,26 @@ cp zoom/amml/amml.hcl dist/@alaydriem/zoom/amml.hcl
 echo "built dist/@alaydriem/zoom"
 '''
 
-[tasks.install-mod]
-description = "Copies the built mod into the AMML mods folder of the game: LM_MODS_DIR/amml/@alaydriem/zoom (set LM_MODS_DIR in mise.local.toml)"
-depends = ["build-mod"]
-dir = "{{config_root}}"
-shell = "bash -c"
-# AMML finds a mod by the folder under mods/amml that holds its amml.hcl
-run = 'mkdir -p "${LM_MODS_DIR:?set LM_MODS_DIR in mise.local.toml}/amml/@alaydriem/zoom" && cp -r dist/@alaydriem/zoom/. "$LM_MODS_DIR/amml/@alaydriem/zoom/"'
-
 [tasks.bench]
 description = "Criterion benches for the per-frame hot paths; arguments narrow the run"
 dir = "{{config_root}}"
 run = "cargo bench -p zoom-bench --bench zoom --"
 
-[tasks.package]
-description = "Builds the mod into dist/@alaydriem/zoom; that folder is the release artifact"
-depends = ["build-mod"]
+[tasks.install]
+description = "Runs package, then copies dist/@alaydriem/zoom into mods/amml/@alaydriem/zoom of an AMML instance under %LOCALAPPDATA%/amml/instances (--instance, default 1.26.60.05). The mod's config/ stays. Close the game first: a running game locks the DLL"
+depends = ["package"]
 dir = "{{config_root}}"
 shell = "bash -c"
-run = 'ls -l dist/@alaydriem/zoom'
+usage = '''
+flag "--instance <name>" default="1.26.60.05" help="The instance folder under %LOCALAPPDATA%/amml/instances"
+'''
+run = '''
+set -e
+[ -n "$LOCALAPPDATA" ] || { echo "LOCALAPPDATA is not set; the instances live under %LOCALAPPDATA%/amml/instances"; exit 1; }
+instance="$LOCALAPPDATA/amml/instances/${usage_instance:-1.26.60.05}"
+[ -f "$instance/Minecraft.Windows.exe" ] || { echo "no instance at $instance"; exit 1; }
+target="$instance/mods/amml/@alaydriem/zoom"
+mkdir -p "$target"
+cp -r dist/@alaydriem/zoom/. "$target/"
+echo "installed dist/@alaydriem/zoom -> $target"
+'''

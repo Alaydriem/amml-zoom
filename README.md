@@ -24,7 +24,7 @@ Hold <kbd>~</kbd> to zoom. The key can be changed on the mod manager's Keybinds 
 
 Requires the AMML loader (as a LeviLamina mod, or standalone in a patched game folder) and [Alaydriem's Mod Manager](https://github.com/alaydriem/modmanager). Without the mod manager the zoom stays off.
 
-Copy the `alaydriem-zoom` folder (`alaydriem_zoom.dll` and `amml.hcl`) into `mods/amml/` of the game folder.
+Copy the `dist/@alaydriem/zoom/` folder (`alaydriem_zoom.dll` and `amml.hcl`) into `mods/amml/@alaydriem/zoom/` of the game folder.
 
 | Zoom | Minecraft Bedrock | AMML | Mod Manager |
 | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ Copy the `alaydriem-zoom` folder (`alaydriem_zoom.dll` and `amml.hcl`) into `mod
 
 ## Configuration
 
-Settings are in the mod manager panel and saved to `mods/amml/alaydriem-zoom/config/config.hcl`.
+Settings are in the mod manager panel and saved to `mods/amml/@alaydriem/zoom/config/config.hcl`.
 
 | Setting | Default | Description |
 | --- | --- | --- |
@@ -51,11 +51,11 @@ Requires Windows x64, [mise](https://mise.jdx.dev), rustup and [cargo-nextest](h
 ```powershell
 mise trust
 mise run preflight
-mise run build-mod
+mise run package
 mise run test
 ```
 
-`mise run build-mod` writes `dist/alaydriem-zoom/` (`alaydriem_zoom.dll` and `amml.hcl`). `mise run install-mod` copies it into `LM_MODS_DIR/amml/alaydriem-zoom` (set `LM_MODS_DIR` to the game's `mods` folder in `mise.local.toml`).
+`mise run package` writes `dist/@alaydriem/zoom/` (`alaydriem_zoom.dll` and `amml.hcl`). `mise run install [--instance <name>]` runs `package`, then copies it into `%LOCALAPPDATA%\amml\instances\<name>\mods\amml\@alaydriem\zoom\` (default instance `1.26.60.05`). Close the game first.
 
 The game functions zoom hooks are found by AMML recipes in the `amml` repository (`recipes/`).
 
