@@ -1,7 +1,7 @@
 namespace    = "alaydriem"
 name         = "zoom"
 display_name = "Zoom"
-version      = "26.60.6"
+version      = "26.62.0"
 author       = "Alaydriem"
 config_path  = "config.hcl"
 
