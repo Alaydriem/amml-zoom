@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./assets/icon.png" alt="Zoom" width="256">
+<img src="./assets/readme.png" alt="Zoom" width="256">
 
 # Alaydriem's Zoom
 
@@ -16,7 +16,7 @@ Hold-to-zoom for Minecraft Bedrock, with a smooth ease in and out. Mouse sensiti
 
 Client-side only.
 
-## Usage
+## Features
 
 Hold <kbd>~</kbd> to zoom. The key can be changed on the mod manager's Keybinds page.
 
@@ -49,7 +49,7 @@ mise run package
 mise run test
 ```
 
-`mise run package` writes `dist/@alaydriem/zoom/` (`alaydriem_zoom.dll` and `amml.hcl`). `mise run install [--instance <name>]` runs `package`, then copies it into `%LOCALAPPDATA%\amml\instances\<name>\mods\amml\@alaydriem\zoom\` (default instance `1.26.60.05`). Close the game first.
+`mise run package` writes `dist/@alaydriem/zoom/` (`alaydriem_zoom.dll` and `amml.hcl`). `mise run install --instance <name>` runs `package`, then copies it into `%LOCALAPPDATA%\amml\instances\<name>\mods\amml\@alaydriem\zoom\`. Close the game first.
 
 The game functions zoom hooks are found by AMML recipes in the `amml` repository (`recipes/`).
 

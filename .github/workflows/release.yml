@@ -35,4 +35,4 @@ jobs:
       namespace: alaydriem
       name: zoom
       package_task: package
-      descriptor: zoom/amml/descriptor.hcl
+      descriptor: src/amml/descriptor.hcl
