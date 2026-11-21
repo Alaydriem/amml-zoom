@@ -12,6 +12,18 @@ fn query(normal_fov: f32, in_gameplay: bool) -> FovQuery {
 }
 
 #[test]
+fn held_is_true_only_for_a_press_the_controller_took() {
+    let mut zoom = controller();
+
+    zoom.press(false, 0);
+    assert!(!zoom.held());
+    zoom.press(true, 0);
+    assert!(zoom.held());
+    zoom.release(FULL);
+    assert!(!zoom.held());
+}
+
+#[test]
 fn press_eases_in() {
     let mut zoom = controller();
     zoom.press(true, 0);

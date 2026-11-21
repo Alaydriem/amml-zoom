@@ -1,14 +1,13 @@
-//! @alaydriem/zoom as an AMML mod: hooks the game's field of view, look turn, focus loss, dimension change,
-//! level exit and client update, and drives zoom-core with them.
+//! @alaydriem/zoom as an AMML mod: listens to the loader's client tick, camera field of view, look turn, focus,
+//! level exit and dimension change events, and drives zoom-core with them.
 
 #![deny(unsafe_code)]
 
-pub mod detours;
+#[forbid(unsafe_code)]
 pub mod services;
-pub mod traits;
-pub mod types;
+#[forbid(unsafe_code)]
 pub mod zoom_mod;
 
 pub use zoom_mod::ZoomMod;
 
-amml_sdk::amml_mod!(ZoomMod);
+amml_api::amml_mod!(ZoomMod);

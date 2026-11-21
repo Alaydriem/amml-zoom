@@ -17,8 +17,6 @@ pub struct ZoomController {
     suspended: bool,
     transition: ZoomTransition,
     last_base_fov: f32,
-    fov_seen: bool,
-    turn_seen: bool,
 }
 
 impl ZoomController {
@@ -35,8 +33,6 @@ impl ZoomController {
             suspended: false,
             transition: ZoomTransition::settled(0.0),
             last_base_fov: Self::DEFAULT_BASE_FOV,
-            fov_seen: false,
-            turn_seen: false,
         }
     }
 
@@ -65,13 +61,7 @@ impl ZoomController {
 
     // a settings change: the new values apply from the next press
     pub fn reconfigure(&mut self, config: ZoomConfig) {
-        *self = Self {
-            suspended: self.suspended,
-            last_base_fov: self.last_base_fov,
-            fov_seen: self.fov_seen,
-            turn_seen: self.turn_seen,
-            ..Self::new(config)
-        };
+        *self = Self { suspended: self.suspended, last_base_fov: self.last_base_fov, ..Self::new(config) };
     }
 
     // a released lease ends a suspension: the manager forgets a Shared holder that gives its lease back and
@@ -82,6 +72,11 @@ impl ZoomController {
             LeaseSync::Refused => self.snap_to_normal(),
             LeaseSync::Unchanged | LeaseSync::Acquired => {}
         }
+    }
+
+    // true from a press the controller took until the release or a reset
+    pub fn held(&self) -> bool {
+        self.held
     }
 
     // true while the zoom changes the view, so the mod must hold the Camera lease
@@ -121,10 +116,6 @@ impl ZoomController {
 
     // an invalid base FOV from the game is returned unchanged and changes nothing
     pub fn fov(&mut self, query: FovQuery, now_us: u64) -> f32 {
-        if !self.fov_seen {
-            self.fov_seen = true;
-            curia::info!("getFov hook active");
-        }
         if !Self::is_valid_fov(query.normal_fov) {
             return query.normal_fov;
         }
@@ -140,10 +131,6 @@ impl ZoomController {
     }
 
     pub fn turn_scale(&mut self, now_us: u64) -> f32 {
-        if !self.turn_seen {
-            self.turn_seen = true;
-            curia::info!("turn delta hook active");
-        }
         let level = self.level(now_us);
         if level <= 0.0 {
             return 1.0;

@@ -1,97 +1,212 @@
-use std::path::Path;
-
 use alaydriem_zoom::ZoomMod;
-use alaydriem_zoom::services::ZoomRuntime;
-use alaydriem_zoom::types::LinkState;
+use amm_client::link::LinkUses;
 use amm_client::test_support::FakeTable;
-use amml_sdk::{AmmlMod, SdkError};
+use amm_core::structs::descriptor::Capability;
+use amm_core::structs::lease::AcquireOutcome;
+use amm_core::structs::registry::ModIndex;
+use amml_api::amml_abi::{CameraFov, ClientTick};
+use amml_api::{AmmlMod, Area};
 
-use crate::support::fake_host::FakeHost;
+use crate::support::zoom_rig::ZoomRig;
 
-const REQUIRED: [(&str, u64); 3] =
-    [(ZoomMod::UPDATE, 0x1000), (ZoomMod::GET_FOV, 0x2000), (ZoomMod::MOUSE_GRABBED, 147)];
+const MANIFEST: &str = include_str!("../amml.hcl");
 
-fn runtime() -> ZoomRuntime {
-    ZoomRuntime::new(Path::new(FakeTable::CONFIG_DIR))
+#[test]
+fn a_held_key_divides_the_fov_by_the_factor() {
+    let rig = ZoomRig::with_manager(true);
+
+    rig.press();
+
+    assert_eq!(rig.fov(70.0, 70.0), 17.5);
+    assert!(rig.logged("info zoom linked"));
+    assert!(rig.logged("info zoom started"));
+    assert!(rig.logged("info zoom full base=70.00 steady=70.00 result=17.50"));
 }
 
 #[test]
-fn every_entry_installs_every_hook() {
-    let mut entries = REQUIRED.to_vec();
-    entries.extend([
-        (ZoomMod::APPLY_TURN_DELTA, 0x3000),
-        (ZoomMod::FOCUS_LOST, 0x4000),
-        (ZoomMod::DIMENSION_CHANGE, 0x5000),
-        (ZoomMod::LEVEL_EXIT, 0x6000),
-    ]);
-    let host = FakeHost::new(&entries);
-    let runtime = runtime();
+fn a_release_gives_the_game_fov_back() {
+    let rig = ZoomRig::with_manager(true);
+    rig.press();
+    rig.fov(70.0, 70.0);
 
-    ZoomMod::enable_with(&host, &runtime).unwrap();
+    rig.release();
 
-    assert_eq!(host.hooked().len(), 6);
-    assert!(host.warnings().is_empty());
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+    assert!(rig.logged("info zoom ended"));
 }
 
 #[test]
-fn missing_optional_entries_turn_off_only_their_features() {
-    let mut entries = REQUIRED.to_vec();
-    entries.push((ZoomMod::FOCUS_LOST, 0x4000));
-    let host = FakeHost::new(&entries);
-    let runtime = runtime();
-    runtime.detach();
+fn no_zoom_starts_while_the_mouse_is_free() {
+    let rig = ZoomRig::with_manager(false);
 
-    ZoomMod::enable_with(&host, &runtime).unwrap();
+    rig.press();
 
-    assert_eq!(host.hooked(), [ZoomMod::GET_FOV, ZoomMod::FOCUS_LOST, ZoomMod::UPDATE]);
-    let warnings = host.warnings();
-    assert_eq!(warnings.len(), 3);
-    assert!(warnings[0].contains(ZoomMod::APPLY_TURN_DELTA) && warnings[0].contains("look speed matching"));
-    assert_eq!(runtime.link_state(), LinkState::Waiting);
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+    assert!(!rig.logged("info zoom started"));
 }
 
 #[test]
-fn a_missing_required_entry_installs_nothing() {
-    let mut entries = REQUIRED.to_vec();
-    entries.retain(|(id, _)| *id != ZoomMod::GET_FOV);
-    entries.push((ZoomMod::APPLY_TURN_DELTA, 0x3000));
-    let host = FakeHost::new(&entries);
+fn a_screen_opened_while_held_ends_the_zoom() {
+    let rig = ZoomRig::with_manager(true);
+    rig.press();
+    assert_eq!(rig.fov(70.0, 70.0), 17.5);
 
-    let result = ZoomMod::enable_with(&host, &runtime());
+    rig.capture(Some(false));
+    rig.tick();
 
-    assert!(matches!(result, Err(SdkError::MissingEntry(id)) if id == ZoomMod::GET_FOV));
-    assert!(host.hooked().is_empty());
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
 }
 
 #[test]
-fn a_missing_mouse_grab_slot_installs_nothing() {
-    let entries: Vec<_> = REQUIRED.iter().copied().filter(|(id, _)| *id != ZoomMod::MOUSE_GRABBED).collect();
-    let host = FakeHost::new(&entries);
+fn the_look_delta_is_scaled_while_zoomed_and_injected_turns_are_not() {
+    let rig = ZoomRig::with_manager(true);
+    rig.press();
+    rig.fov(70.0, 70.0);
 
-    assert!(ZoomMod::enable_with(&host, &runtime()).is_err());
-    assert!(host.hooked().is_empty());
+    let (yaw, pitch) = rig.look(8.0, 4.0, false);
+    let injected = rig.look(8.0, 4.0, true);
+
+    assert!(yaw > 0.0 && yaw < 8.0 && pitch > 0.0 && pitch < 4.0);
+    assert_eq!(yaw / 8.0, pitch / 4.0);
+    assert_eq!(injected, (8.0, 4.0));
+    assert!(rig.logged(&format!("info zoom look scaled scale={:.2}", yaw / 8.0)));
+    assert!(rig.logged(&format!("info zoom look full scale={:.2}", yaw / 8.0)));
 }
 
 #[test]
-fn hooks_past_the_capacity_fail_enable_and_are_removed() {
-    let host = FakeHost::new(&REQUIRED);
-    let runtime = runtime();
-    for id in 0..ZoomRuntime::HOOK_CAPACITY as u64 - 1 {
-        assert!(runtime.keep_hook(amml_sdk::HookHandle(100 + id)));
+fn a_focus_loss_resets_the_zoom() {
+    let rig = ZoomRig::with_manager(true);
+    let resets = [
+        ("focus_lost", ZoomRig::focus_lost as fn(&ZoomRig)),
+        ("world_left", ZoomRig::world_left),
+        ("dimension", ZoomRig::dimension_changing),
+    ];
+
+    for (reason, reset) in resets {
+        rig.press();
+        assert_eq!(rig.fov(70.0, 70.0), 17.5, "{reason}");
+
+        reset(&rig);
+
+        assert_eq!(rig.fov(70.0, 70.0), 70.0, "{reason}");
+        assert!(rig.logged(&format!("info zoom reset reason={reason}")), "{reason}");
+        rig.release();
+    }
+}
+
+#[test]
+fn manager_gone_while_zoomed_gives_the_game_fov() {
+    let rig = ZoomRig::with_manager(true);
+    rig.press();
+    assert_eq!(rig.fov(70.0, 70.0), 17.5);
+
+    FakeTable::gone(&rig.game);
+    rig.tick();
+
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+    assert!(rig.logged("info zoom off reason=manager_gone"));
+    rig.tick();
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+    rig.game.disable::<ZoomMod>();
+}
+
+#[test]
+fn the_fov_follows_the_link_state_the_last_tick_stored() {
+    let rig = ZoomRig::with_manager(true);
+    rig.press();
+    assert_eq!(rig.fov(70.0, 70.0), 17.5);
+
+    FakeTable::gone(&rig.game);
+    let before_the_tick = rig.fov(70.0, 70.0);
+    rig.tick();
+
+    assert_eq!(before_the_tick, 17.5);
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+    rig.game.disable::<ZoomMod>();
+}
+
+#[test]
+fn a_refused_required_listen_is_logged_and_fails_enable() {
+    let game = FakeTable::game();
+    game.offer::<ClientTick>();
+    game.offer::<CameraFov>();
+    game.offer_area(Area::CLIENT_MOUSE);
+    game.refuse_listen::<CameraFov>();
+    FakeTable::provide(&game.ctx()).unwrap();
+    game.load::<ZoomMod>().unwrap();
+
+    assert!(game.enable::<ZoomMod>().is_err());
+    let logs = game.logs();
+    assert!(logs.iter().any(|line| line.starts_with("error zoom off error=")), "{logs:?}");
+}
+
+#[test]
+fn without_the_manager_the_fov_is_unchanged() {
+    let rig = ZoomRig::without_manager();
+
+    for _ in 0..10 {
+        rig.press();
+        rig.tick();
     }
 
-    let result = ZoomMod::enable_with(&host, &runtime);
-
-    assert!(result.is_err());
-    assert_eq!(host.hooked().len(), 2);
-    assert_eq!(host.unhooked().len(), ZoomRuntime::HOOK_CAPACITY + 1);
-    assert!(runtime.take_hooks().is_empty());
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+    assert_eq!(rig.look(8.0, 4.0, false), (8.0, 4.0));
 }
 
 #[test]
-fn the_mod_id_is_the_namespaced_module_string() {
-    assert_eq!(ZoomMod::NAMESPACE, "alaydriem");
-    assert_eq!(ZoomMod::NAME, "zoom");
-    assert_eq!(ZoomMod::id(), ZoomMod::MODULE);
-    assert_eq!(ZoomMod::MODULE, "@alaydriem/zoom");
+fn disable_while_zoomed_leaves_the_game_fov_and_releases_the_lease() {
+    let rig = ZoomRig::with_manager(true);
+    rig.press();
+    assert_eq!(rig.fov(70.0, 70.0), 17.5);
+
+    rig.game.disable::<ZoomMod>();
+
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+    let calls = FakeTable::calls();
+    let release = calls.iter().position(|call| *call == "release").unwrap();
+    let unregister = calls.iter().position(|call| *call == "unregister").unwrap();
+    assert!(release < unregister, "{calls:?}");
+}
+
+#[test]
+fn a_denied_camera_lease_leaves_the_game_fov() {
+    FakeTable::set_acquire_outcome(Capability::Camera, AcquireOutcome::Denied { holder: ModIndex(1) });
+    let rig = ZoomRig::with_manager(true);
+
+    rig.press();
+
+    assert_eq!(rig.fov(70.0, 70.0), 70.0);
+}
+
+#[test]
+fn the_manifest_names_the_mod_and_lists_no_entries() {
+    assert!(MANIFEST.contains("namespace    = \"alaydriem\""));
+    assert!(MANIFEST.contains("name         = \"zoom\""));
+    assert!(MANIFEST.contains("api_version  = 3"));
+    assert!(!MANIFEST.contains("entries"));
+}
+
+#[test]
+fn link_uses_are_complete() {
+    assert_eq!(LinkUses::check(&ZoomMod::USES), Ok(()));
+}
+
+#[test]
+fn the_manifest_uses_block_is_the_uses_of_the_mod() {
+    let manifest = MANIFEST.replace("\r\n", "\n");
+
+    assert_eq!(manifest.matches(&ZoomMod::USES.to_hcl()).count(), 1);
+    assert_eq!(ZoomMod::USES.write_into(&manifest), manifest);
+}
+
+#[test]
+fn the_manifest_writer_keeps_a_crlf_manifest_and_adds_no_second_block() {
+    let crlf = MANIFEST.replace("\r\n", "\n").replace('\n', "\r\n");
+
+    let once = ZoomMod::USES.write_into(&crlf);
+    let twice = ZoomMod::USES.write_into(&once);
+
+    assert_eq!(once, crlf);
+    assert_eq!(twice, crlf);
+    assert_eq!(twice.matches("\nuses {\r\n").count(), 1);
 }
