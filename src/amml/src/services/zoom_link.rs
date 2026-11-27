@@ -1,17 +1,17 @@
-use std::path::Path;
-
-use amm_client::link::{ApiTable, EventDrain, ManagerLink};
+use amm_client::link::{LinkState, ManagerLink};
 use amm_core::errors::LinkError;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::ModEvent;
 use amm_core::structs::lease::AcquireOutcome;
+use amml_api::Ctx;
 use zoom_core::config::{ZoomConfig, ZoomSettings};
 use zoom_core::structs::LeaseSync;
 
 use crate::services::ZoomDescriptor;
 
 // the registration with the mod manager, the events read this tick and whether the Camera lease is held;
-// `events` holds at most MAX_EVENTS_PER_TICK and is cleared at the start of every drain
+// `events` is cleared at the start of every drain; the link itself keeps a bounded number of unread events.
+// Dropping the link gives the Camera lease back, then closes the link
 pub struct ZoomLink {
     link: ManagerLink,
     events: Vec<ModEvent>,
@@ -19,12 +19,14 @@ pub struct ZoomLink {
 }
 
 impl ZoomLink {
-    pub const MAX_DRAINS_PER_TICK: usize = 4;
-    pub const MAX_EVENTS_PER_TICK: usize = Self::MAX_DRAINS_PER_TICK * EventDrain::CAPACITY;
+    // the link waits for the manager's tables; `state` says when it is connected
+    pub fn start(ctx: &Ctx) -> Result<Self, LinkError> {
+        let link = ManagerLink::start_without_frame(ctx, ZoomDescriptor::TEXT)?;
+        Ok(Self { link, events: Vec::new(), holding_camera: false })
+    }
 
-    pub fn new(table: ApiTable, config_dir: &Path) -> Result<Self, LinkError> {
-        let link = ManagerLink::without_frame(table, ZoomDescriptor::TEXT, config_dir)?;
-        Ok(Self { link, events: Vec::with_capacity(Self::MAX_EVENTS_PER_TICK), holding_camera: false })
+    pub fn state(&self) -> LinkState {
+        self.link.state()
     }
 
     pub fn settings(&self) -> ZoomConfig {
@@ -37,18 +39,15 @@ impl ZoomLink {
         }
     }
 
-    // reads the queued manager events, at most MAX_EVENTS_PER_TICK; the rest wait for the next tick
+    // reads every queued manager event
     pub fn drain(&mut self) -> &[ModEvent] {
         self.events.clear();
-        for _ in 0..Self::MAX_DRAINS_PER_TICK {
-            let before = self.events.len();
-            self.events.extend(self.link.events());
-            if self.events.len() - before < EventDrain::CAPACITY {
-                break;
-            }
-        }
+        self.events.extend(self.link.events());
         for event in &self.events {
-            if matches!(event, ModEvent::Revoked { capability: Capability::Camera, .. } | ModEvent::Disabled) {
+            if matches!(
+                event,
+                ModEvent::Revoked { capability: Capability::Camera, .. } | ModEvent::Disabled | ModEvent::ManagerGone
+            ) {
                 self.holding_camera = false;
             }
         }
@@ -75,6 +74,14 @@ impl ZoomLink {
                 curia::warn!("camera lease request failed", { error: error.to_string() });
                 LeaseSync::Refused
             }
+        }
+    }
+}
+
+impl Drop for ZoomLink {
+    fn drop(&mut self) {
+        if self.holding_camera {
+            self.link.release(Capability::Camera);
         }
     }
 }

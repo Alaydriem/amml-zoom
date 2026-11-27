@@ -14,18 +14,23 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 zoom-core.workspace = true
-amml-sdk.workspace = true
+amml-api.workspace = true
 amm-client.workspace = true
 amm-core.workspace = true
 curia.workspace = true
 
 [dev-dependencies]
+amml-api = { workspace = true, features = ["test"] }
 amm-client = { workspace = true, features = ["test-support"] }
 hcl-rs.workspace = true
 
 [[test]]
 name = "integration"
 path = "tests/integration.rs"
+
+[[example]]
+name = "write_manifest"
+path = "examples/write_manifest.rs"
 
 [lints]
 workspace = true
